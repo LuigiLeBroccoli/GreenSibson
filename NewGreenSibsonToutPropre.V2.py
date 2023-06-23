@@ -280,7 +280,7 @@ def first_edge(siteN, siteK, diag):
     # si pas de bug, la mediatrice coupe 2 et uniquement 2 edge
     # si on a un seul tronque (ou 0), c'est que l'autre tronque est un des bords. TODO: trouver le bord pour calcul l'arrete
     if len(sitesTronques) > 2:
-        raise Exception("WTF ? on a "+str(len(sitesTronques))+" edges a tronquer en ajoutant "+str(siteN)+" dans "+str(siteK)+". Pour infos, on avait "+str(sitesGardes)+" sites gardes et "+str(len(sitesSupprimes))+" sites supprimes")
+        raise Exception(" on a "+str(len(sitesTronques))+" edges a tronquer en ajoutant "+str(siteN)+" dans "+str(siteK)+". Pour infos, on avait "+str(sitesGardes)+" sites gardes et "+str(len(sitesSupprimes))+" sites supprimes")
 
     pts = []
     if len(sitesTronques) == 0:
