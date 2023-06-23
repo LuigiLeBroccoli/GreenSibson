@@ -4,6 +4,7 @@ import time
 import random as rand
 from math import log10
 
+#Hellooooo
 
 ## Classes
 class Point:
