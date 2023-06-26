@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import time
 import random as rand
 from math import log10
+import numpy as np
 
 
 ## Classes
@@ -44,7 +45,7 @@ class Vecteur:
 class Droite:
     def __init__(self,pt1,pt2):
         if (pt1.equals(pt2)):
-            raise Exception("BUG: on ne peut pas definir une doite avec 2x le meme point")
+            raise Exception("BUG: on ne peut pas définir une droite avec 2x le même point")
         self.v = Vecteur((pt2.x - pt1.x),(pt2.y - pt1.y))
     #un vecteur directeur de la droite
         self.a = self.v.dy
@@ -80,7 +81,7 @@ class Site :
 class Edge:
     def __init__(self,pt1,pt2):#,site1,site2):
         if (pt1.equals(pt2)):
-            raise Exception("BUG: on ne peut pas definir une doite avec 2x le meme point")
+            raise Exception("BUG: on ne peut pas définir un segment avec 2x le même point")
         self.pt1 = pt1
         self.pt2 = pt2
     def droite(self):
@@ -111,7 +112,7 @@ class DiagVoronoi:
     def __init__(self,liste_sites,fenetre): #les 4 sites virtuels sont les 4 premiers sites de liste_sites
         self.lsites = liste_sites
         self.fenetre = fenetre
-        self.debugGraphId = 0
+        #self.debugGraphId = 0
 
 def dumpSite(site):
     msg = str(site)
@@ -141,10 +142,10 @@ def interDrSeg(d,s): #s est une arête (edge, segment) et d une droite
     Ds = Droite(s.pt1,s.pt2)
     pt_inter = d.intersection(Ds)
 
-    ##print("interDrSeg:")
-    ##print("\t* droite = "+str(d))
-    ##print("\t* segmnet = "+str(s))
-    ##print("\t* pt_inter = "+str(pt_inter))
+    #print("interDrSeg:")
+    #print("\t* droite = "+str(d))
+    #print("\t* segmnet = "+str(s))
+    #print("\t* pt_inter = "+str(pt_inter))
 
     precision = 0.0001
 
@@ -183,44 +184,45 @@ def nearest_site(siteN,siteDep):#siteDep est un site du diagramme déjà existan
                 dstMin = dstAdja
                 siteMin = siteAdja
 
-        if siteMin == siteDep:
+        if siteMin == siteDep: #bingo! siteN appartient à la région de siteDep !
             return siteDep
 
-        # OPTIM : on evite un appel recursif de fonction (+ couteux que juste un saut vers le debut de la boucle, ne fonctionne pas si trop de niveau de recursion)
-        siteDep = siteMin
+        siteDep = siteMin #on relance sur siteMin
 
 ##########################################################################
 ##########################################################################
 ##########################################################################
 
+
 ##########################################################################
-# renvoie si pt1 et pt2 sont du meme cote de la droite                   #
+# renvoie si pt1 et pt2 sont du même cote de la droite                   #
 ##########################################################################
 def memeCote(droite, pt1, pt2):
     v1 = Vecteur(droite.pt1.x-pt1.x, droite.pt1.y-pt1.y)
     v2 = Vecteur(droite.pt1.x-pt2.x, droite.pt1.y-pt2.y)
     vn = droite.v.normal()
-    # astuce : si les 2 produits scalaire sont du meme signe, alors les 2 pts sont du meme cote de la droite
-    #          meme signe <=> le produit et positif
+    # astuce : si les 2 produits scalaire sont du même signe, alors les 2 pts sont du même côté de la droite
+    #          même signe <=> le produit et positif
     return (vn.produitScalaire(v1) * vn.produitScalaire(v2)) > 0
 
+
 ##########################################################################
-# ajuste l'edge commun aux sites I et J suite a l'apparition du site K   #
+# ajuste l'edge commun aux sites I et J suite a l'apparition du site N   #
 ##########################################################################
 def modifie_edge(media, siteI, siteJ, new_pt, diag): #new_pt est le point d'intersection de l'arête N-J avec I-J. L'arête I-J doit être mutilée en partie
-    ##print("---------------------------------------")
-    ##print("ENTER : modifie_edge(")
-    ##print("\tmedia    : "+str(media))
-    ##print("\tsiteI    : "+str(siteI))
-    ##print("\tsiteJ    : "+str(siteJ))
-    ##print("\tnew_pt   : "+str(new_pt))
-    ##print(")")
-    ##print("---------------------------------------")
+    #print("---------------------------------------")
+    #print("ENTER : modifie_edge(")
+    #print("\tmedia    : "+str(media))
+    #print("\tsiteI    : "+str(siteI))
+    #print("\tsiteJ    : "+str(siteJ))
+    #print("\tnew_pt   : "+str(new_pt))
+    #print(")")
+    #print("---------------------------------------")
     edge = siteJ.adja[siteI]
-    # astuce : on fait une copie, car on veut garder les anciens coordonnees visible dans le sens
+    # astuce : on fait une copie, car on veut garder les anciennes coordonnées visible dans le sens
     #edge = Edge(edge.pt1, edge.pt2)
     #siteJ.adja[siteI] = edge
-    # optim : plutot que de recreer un Edge, on modifie l'ancien edge deja existant
+    # optim : plutot que de recréer une Edge, on modifie l'ancienne edge déjà existante
     if memeCote(media, siteJ.pt, edge.pt1):
         edge.pt2 = new_pt
     else:
@@ -229,25 +231,25 @@ def modifie_edge(media, siteI, siteJ, new_pt, diag): #new_pt est le point d'inte
     #siteTronque.adja[siteK] = eIJ
     #siteK.adja[siteTronque] = eIJ
 
+
 ###########################################################################################
 # description:                                                                            #
-#   cherche la 1ier arrete qui se fait couper par la mediatrice separant les sites K et N #
-# entrees:                                                                                #
+#   cherche la première arête de la cellule de K qui se fait couper par la médiatrice séparant les sites K et N #
+# entrées:                                                                                #
 #   siteN : site qu'on ajoute                                                             #
-#   siteK : site impacte par siteN                                                        #
-#   siteLePlusProche : le + proche des site impacte par siteN                             #
+#   siteK : site impacté par siteN                                                        #
 #   diag  : le diagramme                                                                  #
 # sortie:                                                                                 #
-#   id du 1ier site adjacent trouve avec dont l'edge se fait couper                       #
+#   id du premier site adjacent trouve avec dont l'edge se fait couper                       #
 ###########################################################################################
 def first_edge(siteN, siteK, diag):
 
-    ##print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    ##print("ENTER: first_edge("+str(siteN)+", "+str(siteK)+")")
-    ##print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    #print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    #print("ENTER: first_edge("+str(siteN)+", "+str(siteK)+")")
+    #print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
     if siteN in siteK.adja:
-        return # on a deja travailler sur ce cas. ce test permet d'evitre de boucler indefiniment
+        return # on a déjà travaillé sur ce cas. ce test permet d'éviter de boucler indéfiniment
 
     sitesTronques = {} # clef = site, valeur = edge
     sitesSupprimes = []
@@ -258,68 +260,68 @@ def first_edge(siteN, siteK, diag):
         eIK = siteK.adja[siteI]
         if memeCote(media, eIK.pt1, siteK.pt):
             if memeCote(media, eIK.pt2, siteK.pt):
-                # eIK est entierement du meme cote de la mediatrice que le centre sur siteK
-                # eIK n'est ni tronquee, ni supprimee
+                # eIK est entièrement du même cote de la médiatrice que siteK
+                # eIK n'est ni tronquée, ni supprimée
                 sitesGardes += 1
                 continue
-            # eIK est a tronquer
+            # eIK est à tronquer
             sitesTronques[siteI] = eIK
             continue
         if memeCote(media, eIK.pt2, siteK.pt):
-            # eIK est a tronquer
+            # eIK est à tronquer
             sitesTronques[siteI] = eIK
             continue
-        # eIK est entierement de l'autre cote de la mediatrice, les sites I et K se deconnectent
+        # eIK est entièrement de l'autre côté de la médiatrice, les sites I et K se déconnectent
         sitesSupprimes.append(siteI)
 
-    # on deconnecte asap tous les sites qui sont impactes par l'insert du site N
+    # on déconnecte asap tous les sites qui sont impactés par l'insertion du site N
     for siteI in sitesSupprimes:
-        del siteK.adja[siteI]
+        del siteK.adja[siteI] #on ne les déconnecte que chez K pour l'instant. On rappellera la fonction sur I après.
         debugGraph(diag)
 
-    # si pas de bug, la mediatrice coupe 2 et uniquement 2 edge
-    # si on a un seul tronque (ou 0), c'est que l'autre tronque est un des bords. TODO: trouver le bord pour calcul l'arrete
-    if len(sitesTronques) > 2:
-        raise Exception(" on a "+str(len(sitesTronques))+" edges a tronquer en ajoutant "+str(siteN)+" dans "+str(siteK)+". Pour infos, on avait "+str(sitesGardes)+" sites gardes et "+str(len(sitesSupprimes))+" sites supprimes")
+    # si pas de bug, la médiatrice coupe 2 et uniquement 2 edges
+    # si on a un seul tronqué (ou 0), c'est que l'autre tronqué est un des bords. TODO: trouver le bord pour calculer l'arête
+    if len(sitesTronques) > 2: #3 intersections de la médiatrice entre N et K sur les edges de K. "degeneracies" selon Green et Sibson : cas de probabilité presque nulle (théoriquement et vérifiable empiriquement). On ne le traite pas, on lève une exception.
+        raise Exception("on a "+str(len(sitesTronques))+" edges à tronquer en ajoutant "+str(siteN)+" dans "+str(siteK)+". Pour infos, on avait "+str(sitesGardes)+" sites gardés et "+str(len(sitesSupprimes))+" sites supprimés")
 
     pts = []
     if len(sitesTronques) == 0:
-        # la mediatrice coupe 2 bords et seulement 2 bords (on ne traite pas le cas ou on arrive exactement dans 1 angle :/)
-        #print("\taucun edge tronque, on cherche 2 bords")
-        #print("\tpour rappel, la mediatrice est "+str(media))
+        # la médiatrice coupe 2 bords de la fenêtre et seulement 2 bords (on ne traite pas le cas où on arrive exactement dans 1 angle :/)
+        #print("\taucune edge tronquée, on cherche 2 bords")
+        #print("\tpour rappel, la médiatrice est "+str(media))
         for bord in diag.fenetre.bords:
-            #print("\t\ton test avec le bord "+str(bord))
-            #print("\t\tpour rappel, la mediatrice est "+str(media))
+            #print("\t\ton teste avec le bord "+str(bord))
+            #print("\t\tpour rappel, la médiatrice est "+str(media))
             pt = interDrSeg(media, bord)
             #print("\t\ttouche la mediatrice en "+str(pt))
             if pt != None:
                 pts.append(pt)
                 if len(pts)==2:
                     break
-        #print("\ton a trouve "+str(len(pts))+" intersection bord/mediatrice sur les 2 attendus")
+        #print("\ton a trouvé "+str(len(pts))+" intersections bord/mediatrice sur les 2 attendus")
     else:
         # pas 0, donc soit 1 ou 2
-        # dans les 2 cas, la ou les arretes tronquees sont a ajuster
+        # dans les 2 cas, la ou les arêtes tronquées sont à ajuster
         for siteTronque in sitesTronques.keys():
-            pt = interDrSeg(media, siteK.adja[siteTronque])
+            pt = interDrSeg(media, siteK.adja[siteTronque]) #pt d'intersection sur l'arête à mutiler
             pts.append( pt )
-            modifie_edge(media, siteTronque, siteK, pt, diag)
+            modifie_edge(media, siteTronque, siteK, pt, diag) #on mutile l'arête chez K. On relancera first_edge sur I
 
         # et si seulement 1, on essaye de trouver l'autre point sur l'un des bords
         if len(sitesTronques) == 1:
-            #print("\ton a un seul edge tronque, donc il faut trouver le bord qu'on coupe")
-            # on touche un bord, certe, mais ce doit etre un bord que touche aussi l'autre site
+            #print("\ton a une seule edge tronquée, il faut donc trouver le bord qu'on coupe")
+            # on touche un bord, certes, mais ce doit être un bord que touche aussi l'autre site (K)
             for bord in diag.fenetre.bords:
                 #print("\t\ton essaye avec le bord "+str(bord))
                 ptBord = interDrSeg(media, bord)
-                #print("\t\tqui coupe la mediatrice en "+str(ptBord))
+                #print("\t\tqui coupe la médiatrice en "+str(ptBord))
                 if ptBord == None:
                     continue
-                # ok, on a une intersection, mais elle est peut etre du mauvais cote
-                # pour cela, on test tous les milieux de tous les edges restant du site
-                # qui doivent tous etre du bon cote (la zone d'influence est convexe)
-                # donc le point du bord et le point du site doivent tjs etre du
-                # meme code que les droites formees par les edges actuellement connu
+                # ok, on a une intersection, mais elle est peut être du mauvais côté
+                # pour cela, on teste tous les milieux de tous les edges restant du site
+                # qui doivent tous être du bon côté (la cellule/zone d'influence est convexe)
+                # donc le point du bord et le point du site doivent tjrs être du
+                # même côté que les droites formées par les edges actuellement connues
                 pasLeBonBord = False
                 for edge in siteK.adja.values():
                     droite = edge.droite()
@@ -328,12 +330,12 @@ def first_edge(siteN, siteK, diag):
                         break
                 if pasLeBonBord:
                     continue
-                #print("!!!! trouve !!!!!")
+                #print("!!!! trouvé !!!!!")
                 break
 
             pts.append( ptBord )
 
-    # on rajoute la nouvelle arrete complete entre les site N et K
+    # on rajoute la nouvelle arête complète entre les sites N et K
     #print("on avait "+str(len(sitesTronques))+" edges intersites tronque:")
     #for pt in pts:
         #print("\t"+str(pt))
@@ -341,7 +343,7 @@ def first_edge(siteN, siteK, diag):
     siteN.adja[siteK] = Edge(pts[0], pts[1])
     debugGraph(diag)
 
-    # on fait un appel recursif sur tous les sites supprime. Ils ne peuvent pas nous rappeler car on a deja deconnecter siteK de tous ces sites supprimes un peu + haut
+    # on fait un appel récursif sur tous les sites supprimés. Ils ne peuvent pas nous rappeler car on a déjà déconnecté siteK de tous ces sites supprimés un peu + haut
     for siteSupprime in sitesSupprimes:
         first_edge(siteN, siteSupprime, diag)
 
@@ -351,9 +353,9 @@ def first_edge(siteN, siteK, diag):
 
 ###########################################################################
 # description                                                             #
-#   ajoute un nouveau site encore inconnue a cote du seul site existant   #
-#   qui l'inclue dans sa zone d'influence                                 #
-# entrees                                                                 #
+#   ajoute un nouveau site encore inconnu à côté du seul site existant qui#
+#   l'inclus dans sa zone d'influence                                     #
+# entrées                                                                 #
 #   siteN : le nouveau site                                               #
 #   siteK : le site accueillant                                           #
 #   diag  : le diagramme                                                  #
@@ -363,20 +365,19 @@ def first_edge(siteN, siteK, diag):
 def ajout_nouveau_site_a_son_plus_proche(siteN, siteK, diag):
     first_edge(siteN, siteK, diag)
 
-def GreenSibson__V1(diag):
+def GreenSibson(diag):
     site_prec = diag.lsites[0]
     for siteN in diag.lsites[1:]:
-        ##print("==============================================================")
-        ##print(f"GreenSibson__V1, prochain site a ajouter: {siteN}")
-        ##print("==============================================================")
+        #print("==============================================================")
+        #print(f"GreenSibson__V1, prochain site a ajouter: {siteN}")
+        #print("==============================================================")
         siteK = nearest_site(siteN,site_prec)
-        ##print(f"\tSite le + proche: {siteK}")
-        ##print(dumpSite(siteK))
+        #print(f"\tSite le + proche: {siteK}")
+        #print(dumpSite(siteK))
         ajout_nouveau_site_a_son_plus_proche(siteN, siteK, diag)
         site_prec = siteN
     return diag
 
-GreenSibson = GreenSibson__V1
 
 def graph(sites, fenetre, filename):
     plt.figure()
@@ -438,8 +439,10 @@ def generateur_aleat(n, f):
     return ls
 
 
-fenetre = Fenetre(0, 100, 0, 100)
-sites = generateur_aleat(10, fenetre)
+fenetre = Fenetre(0, 300, 0, 300)
+sites = generateur_aleat(200, fenetre)
+diag = GreenSibson(DiagVoronoi(sites,fenetre))
+graph(sites,fenetre,'diagVoronoi200')
 
 ##print("Test calculs intersections droite/segment -------------------------")
 media = Droite(Point(8.918023245394973, 25.548989685562198), Point(13.884067246345293, 38.55628715578214))
@@ -456,7 +459,7 @@ for bord in fenetre.bords:
         v.devientUnitaire()
         #print("vecteur directeur de l'intersection: "+str(v))
 if nbInter != 2:
-    raise Exception("Bug dans le calcul d'intersection droite/segment detecte. On devrait avoir 2 points, on en a trouve "+str(nbInter))
+    raise Exception("Bug dans le calcul d'intersection droite/segment détecté. On devrait avoir 2 points, on en a trouvé "+str(nbInter))
 #print("------------------------- Test calculs intersections droite/segment")
 
 #print("Les sites ---------------------------------")
@@ -464,16 +467,16 @@ if nbInter != 2:
     #print(site)
 #print("--------------------------------- Les sites")
 
-##print("Test distances au 4 bords -----------------")
-##print(distance_site(fenetre.siteG, sites[4]))
-##print(distance_site(sites[4], fenetre.siteG))
-##print(distance_site(fenetre.siteH, sites[4]))
-##print(distance_site(sites[4], fenetre.siteH))
-##print(distance_site(fenetre.siteD, sites[4]))
-##print(distance_site(sites[4], fenetre.siteD))
-##print(distance_site(fenetre.siteB, sites[4]))
-##print(distance_site(sites[4], fenetre.siteB))
-##print("----------------- Test distances au 4 bords")
+#print("Test distances au 4 bords -----------------")
+#print(distance_site(fenetre.siteG, sites[4]))
+#print(distance_site(sites[4], fenetre.siteG))
+#print(distance_site(fenetre.siteH, sites[4]))
+#print(distance_site(sites[4], fenetre.siteH))
+#print(distance_site(fenetre.siteD, sites[4]))
+#print(distance_site(sites[4], fenetre.siteD))
+#print(distance_site(fenetre.siteB, sites[4]))
+#print(distance_site(sites[4], fenetre.siteB))
+#print("----------------- Test distances au 4 bords")
 
 #print("Test distances 2 pts ----------------------")
 #print(distance_site(sites[4], sites[5]))
@@ -481,38 +484,38 @@ if nbInter != 2:
 #print("---------------------- Test distances 2 pts")
 
 #print("Test produit scalaire ---------------------")
-media = medIJ(sites[4], sites[5])
-v = Vecteur( sites[4].pt.x-sites[5].pt.x, sites[4].pt.y-sites[5].pt.y )
+#media = medIJ(sites[4], sites[5])
+#v = Vecteur( sites[4].pt.x-sites[5].pt.x, sites[4].pt.y-sites[5].pt.y )
 #print(v.produitScalaire(v.normal()))
 #print(media.v.produitScalaire(Vecteur( sites[4].pt.x-sites[5].pt.x, sites[4].pt.y-sites[5].pt.y )))
 #print("--------------------- Test produit scalaire")
 
-tab_pts = [i for i in range(1,500)]
-stats = []
-nbPts = 1
+#tab_pts = [i for i in range(1,500)]
+#stats = []
+#nbPts = 1
 #print("nbPts = "+str(nbPts))
-while nbPts<500:
-    #print("nbPts = "+str(nbPts))
-    retry = 20
-    stats_current=[]
-    while retry>0:
-        retry -= 1
-        sites = generateur_aleat(nbPts, fenetre)
-        diagtest1 = DiagVoronoi(sites,fenetre)
-        ts = time.time()
-        GreenSibson(diagtest1)
-        ts = time.time()-ts
-        stats_current.append(ts)
-        #graph(sites, fenetre, "zePlot_"+str(nbPts)+".png")
-
-    nbPts += 1
-    stats_current.sort()
-    mediane = (stats_current[9] + stats_current[10])/2
-    stats.append(mediane)
-    #plt.show()
-
-
-plt.figure()
-plt.plot(tab_pts,stats)
-plt.show()
+# while nbPts<500:
+#     #print("nbPts = "+str(nbPts))
+#     retry = 20
+#     stats_current=[]
+#     while retry>0:
+#         retry -= 1
+#         sites = generateur_aleat(nbPts, fenetre)
+#         diagtest1 = DiagVoronoi(sites,fenetre)
+#         ts = time.time()
+#         GreenSibson(diagtest1)
+#         ts = time.time()-ts
+#         stats_current.append(ts)
+#         #graph(sites, fenetre, "zePlot_"+str(nbPts)+".png")
+#
+#     nbPts += 1
+#     stats_current.sort()
+#     mediane = (stats_current[9] + stats_current[10])/2
+#     stats.append(mediane)
+#     #plt.show()
+#
+#
+# plt.figure()
+# plt.plot(tab_pts,stats)
+# plt.show()
 
